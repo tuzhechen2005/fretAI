@@ -1,0 +1,17 @@
+fastapi>=0.115
+uvicorn[standard]>=0.32
+python-multipart>=0.0.12
+pydantic-settings>=2.6
+sqlalchemy>=2.0
+aiosqlite>=0.20
+
+# 音频分析
+librosa>=0.10
+numpy>=1.26
+soundfile>=0.12
+
+# LLM Agent
+anthropic>=0.40
+
+# 导出
+reportlab>=4.2
