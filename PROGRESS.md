@@ -2,7 +2,7 @@
 
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 
-**总体进度：约 10%**（骨架搭建完成，规则系统刚起步）
+**总体进度：约 18%**（骨架搭建完成，规则系统跑通 transpose + voicings + power_chord）
 
 ---
 
@@ -13,9 +13,9 @@
 
 ## 里程碑 2：规则系统（services/rules/，纯 Python，无 AI 无数据库）
 - [x] `transpose.py` — 单个和弦转调 `transpose_chord`
-- [ ] 把 `transpose_chord` 接到一个调试用 API 接口，浏览器里跑通
-- [ ] `voicings.py` — 和弦指法库（先手填 5-10 个常用和弦）
-- [ ] `power_chord.py` — Power Chord 转换
+- [x] 把 `transpose_chord` 接到一个调试用 API 接口，用 curl 验证跑通
+- [x] `voicings.py` — 和弦指法库（7 个常用开放和弦：C/D/E/G/A/Am/Em/Dm）
+- [x] `power_chord.py` — Power Chord 转换（复用 voicings 查表）
 - [ ] `capo.py` — Capo 推荐
 - [ ] `difficulty.py` — 难度评分
 - [ ] `positions.py` — 把位优化算法（较难，可放最后）
@@ -56,3 +56,4 @@
 
 ## 已验证会踩的坑（备忘）
 - **Python 环境混用**：机器上同时有 pyenv 3.9.18 和系统 Python 3.14，`uvicorn` 命令可能解析到错误环境。启动时用 `python -m uvicorn ...` 而不是直接 `uvicorn ...`，先 `which python` 确认在 `.venv` 里。
+- **`.venv` 已改用系统 Python 3.14**（原 pyenv 3.9.18 不支持 `int | None` 这种新版类型写法，schemas/ 里大量用到）。重建命令：`rm -rf .venv && /Library/Frameworks/Python.framework/Versions/3.14/bin/python3 -m venv .venv`
