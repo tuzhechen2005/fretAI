@@ -1,6 +1,8 @@
 """音频分析结果：Key / BPM / 和弦时间轴 / 段落结构（产品文档 §6.1、§6.2、§6.3）。"""
 from fastapi import APIRouter
 
+from app.services.rules.transpose import transpose_progression
+
 router = APIRouter()
 
 
@@ -8,6 +10,12 @@ router = APIRouter()
 async def get_analysis(song_id: str):
     """返回 SongAnalysisResult（schemas/song.py），含置信度与候选和弦。"""
     raise NotImplementedError
+
+
+@router.post("/transpose-preview")
+async def transpose_preview(chords: list[str], semitones: int):
+    """调试用：直接传和弦列表和半音数，返回转调结果，不依赖数据库。"""
+    return {"original": chords, "transposed": transpose_progression(chords, semitones)}
 
 
 @router.post("/{song_id}/transpose")
