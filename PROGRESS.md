@@ -2,7 +2,7 @@
 
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 
-**总体进度：约 18%**（骨架搭建完成，规则系统跑通 transpose + voicings + power_chord）
+**总体进度：约 22%**（骨架搭建完成，规则系统跑通 transpose + voicings + power_chord + capo 枚举）
 
 ---
 
@@ -16,7 +16,7 @@
 - [x] 把 `transpose_chord` 接到一个调试用 API 接口，用 curl 验证跑通
 - [x] `voicings.py` — 和弦指法库（7 个常用开放和弦：C/D/E/G/A/Am/Em/Dm）
 - [x] `power_chord.py` — Power Chord 转换（用 6 弦品格公式计算，覆盖全部 12 根音，不依赖指法库）
-- [ ] `capo.py` — Capo 推荐
+- [x] `capo.py` — Capo 推荐（枚举 0-7 品，复用 transpose_progression；发现并修复了降号根音 bug）
 - [ ] `difficulty.py` — 难度评分
 - [ ] `positions.py` — 把位优化算法（较难，可放最后）
 
