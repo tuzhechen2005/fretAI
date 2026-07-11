@@ -1,8 +1,16 @@
 """Power Chord 转换（产品文档 §6.6）：任意和弦 -> 根音 5 和弦。
 
-支持 6 弦根音 / 5 弦根音两套位置，可指定目标把位区域（如"5 品附近"）。
+Power chord 在吉他上是一个"固定形状"，随品格整体平移即可，
+不需要像开放和弦那样每个根音单独设计指法：
+
+    6 弦（低音 E 弦）：第 N 品 -> 根音
+    5 弦          ：第 N+2 品 -> 五度音
+
+其中 N 就是"这个根音距离 6 弦空弦音 E 有几个半音"。
+例如 E5 是 022xxx（N=0），F#5 是 244xxx（N=2），A5 是 577xxx（N=5）。
 """
-from app.services.rules.voicings import get_voicings
+
+NOTES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"]
 
 
 def to_power_chord(chord: str, prefer_position: int | None = None) -> dict:
@@ -11,17 +19,17 @@ def to_power_chord(chord: str, prefer_position: int | None = None) -> dict:
         root = chord[:2]
     else:
         root = chord[:1]
-    voicings = get_voicings(root)
 
-    for v in voicings:
-        if v["kind"] == "power":
-            power_voicing = v
-            break
-    
+    # 根音相对 6 弦空弦音 E 的品格数（0-11）
+    fret = (NOTES.index(root) - NOTES.index("E")) % 12
+
+    if fret == 0:
+        fingering = "022xxx"
+    else:
+        fingering = f"{fret}-{fret + 2}-{fret + 2}xxx"
+
     return {
         "display": root + "5",
-        "fingering": power_voicing["fingering"],
-        "position": power_voicing["position"],
+        "fingering": fingering,
+        "position": fret,
     }
-    
-
