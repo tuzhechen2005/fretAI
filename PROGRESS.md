@@ -2,7 +2,7 @@
 
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 
-**总体进度：约 40%**（里程碑 2、3 全部完成：规则系统 + 音频上传/查询/播放接口跑通）
+**总体进度：约 60%**（里程碑 2、3、4 全部完成：规则系统 + 上传/存储 + 音频分析 pipeline 端到端跑通）
 
 ---
 
@@ -28,11 +28,12 @@
 - [x] 音频流接口：`GET /songs/{id}/audio`，用 FastAPI FileResponse 支持 Range 请求，curl 下载验证字节数一致
 
 ## 里程碑 4：音频分析（services/audio/，librosa）—— AI 多带写，重点讲输入输出含义
-- [ ] BPM 检测
-- [ ] Key 检测
-- [ ] 和弦识别（chroma + 模板匹配）
-- [ ] 段落检测
-- [ ] 接入 BackgroundTasks，串成完整 pipeline
+- [x] `preprocess.py` — librosa.load 读取音频，返回 (y, sr)（已用真实 mp3 验证，时长/采样率符合预期）
+- [x] `bpm.py` — librosa.beat.beat_track 检测 BPM + 节拍时间点（已验证：117.45 BPM，接近 Thriller 真实 BPM 118-119；踩坑：新版 librosa 返回 tempo 是 numpy 数组不是纯 float，需要 .item() 转换）
+- [x] `key.py` — chroma 特征 + Krumhansl-Schmuckler 模板匹配（已用合成 C 大三和弦测试音验证代码逻辑正确；真实歌曲 Thriller 检测偏差，判断为算法在复杂混音下的已知局限，详见 DECISIONS.md #7）
+- [x] `chords.py` — 按拍切片 + 24 种和弦模板（12大三+12小三）点积匹配 + 合并相邻同和弦（已用合成 C→G 和弦切换测试音验证：切换点精确，置信度 0.85 远高于 Thriller 真实数据的 0.27-0.31，确认低置信度是真实信号非 bug，详见 DECISIONS.md #8）
+- [x] `sections.py` — librosa.segment.agglomerative 聚类切段，固定 6 段，name 留空交给 Agent 层贴标签（已用 Thriller 验证：首尾相接总时长吻合，段落长度不均匀但符合"够用就好"的定位，详见 DECISIONS.md #9）
+- [x] 接入 BackgroundTasks，串成完整 pipeline（upload_song 存文件建记录后立刻返回 pending，后台任务跑 analyze_song，依次经过 analyzing -> done/failed，结果序列化存进 Song.analysis；端到端验证：上传 -> 轮询状态 -> 直接查库确认 analysis 字段内容完整）
 
 ## 里程碑 5：Agent 层（⭐ 用户明确的重点，会拆到最细）
 

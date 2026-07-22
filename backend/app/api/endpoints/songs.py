@@ -1,20 +1,37 @@
 """音频上传与歌曲管理（产品文档 §6.1）。"""
 import uuid
 
-from fastapi import APIRouter, Depends, UploadFile, HTTPException
+from fastapi import APIRouter, Depends, UploadFile, HTTPException, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
-from app.db.database import get_db
+from app.db.database import get_db, async_session
 from app.db.models import Song
 from fastapi.responses import FileResponse
+from app.services.audio.pipeline import analyze_song
+
 
 
 router = APIRouter()
 
+async def _run_analysis(song_id: str, file_path: str):
+    """后台任务：跑音频分析，把结果写回数据库。"""
+    async with async_session() as db:
+        song = await db.get(Song, song_id)
+        song.status = "analyzing"
+        await db.commit()
+
+        try:
+            result = await analyze_song(song_id, file_path)
+            song.analysis = result.model_dump()
+            song.status = "done"
+        except Exception:
+            song.status = "failed"
+
+        await db.commit()
 
 @router.post("")
-async def upload_song(file: UploadFile, db: AsyncSession = Depends(get_db)):
+async def upload_song(file: UploadFile,     background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
     """上传音频文件，保存到 storage 并创建 Song 记录，触发后台分析任务。"""
     song_id = str(uuid.uuid4())
     file_path = f"{settings.upload_dir}/{song_id}_{file.filename}"
@@ -29,6 +46,7 @@ async def upload_song(file: UploadFile, db: AsyncSession = Depends(get_db)):
     db.add(song)
     await db.commit()
 
+    background_tasks.add_task(_run_analysis, song_id, file_path)
     return {"id": song.id, "filename": song.filename, "status": song.status}
 
 
