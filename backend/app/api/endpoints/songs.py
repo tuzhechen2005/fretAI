@@ -1,13 +1,14 @@
 """音频上传与歌曲管理（产品文档 §6.1）。"""
 import uuid
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, UploadFile, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.database import get_db
 from app.db.models import Song
-from fastapi import HTTPException
+from fastapi.responses import FileResponse
+
 
 router = APIRouter()
 
@@ -48,6 +49,11 @@ async def get_song(song_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{song_id}/audio")
-async def stream_audio(song_id: str):
+async def stream_audio(song_id: str,  db: AsyncSession = Depends(get_db)):
     """返回音频文件供前端播放器使用（支持 Range 请求）。"""
-    raise NotImplementedError
+    song = await db.get(Song, song_id)
+    if song is None:
+        raise HTTPException(404, "Song not found") 
+
+    return FileResponse(song.file_path) 
+
