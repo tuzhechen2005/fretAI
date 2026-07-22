@@ -2,7 +2,7 @@
 
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 
-**总体进度：约 62%**（里程碑 2、3、4 完成；里程碑 5 Agent 层起步：LLM API 调用打通）
+**总体进度：约 65%**（里程碑 2、3、4 完成；里程碑 5 Agent 层：LLM API 调用 + Tool Use 机制均已打通）
 
 ---
 
@@ -43,7 +43,7 @@
 3. **不要为每个小功能单独开一个 agent**（比如不能有"横按判断 agent""品格计算 agent"这种）。细粒度功能永远停留在 tool 这一层——也就是 `rules/` 目录下已经写好的函数（transpose_chord / recommend_capo / to_power_chord / score_difficulty / get_voicings 等）。7 个 Agent 内部通过 Tool Use 按需调用这些函数，而不是互相之间再发消息、再拆子 agent。这样避免了 multi-agent 系统常见的通信复杂度暴增、调试困难的问题。
 
 - [x] 打通一次最基础的 LLM API 调用（阿里云百炼 qwen3.5-flash，OpenAI 兼容接口，AsyncOpenAI 客户端，已验证 chat.completions.create 端到端跑通）
-- [ ] 理解 Tool Use：LLM 怎么"调用"我们写的规则函数（recommend_capo / to_power_chord 等）
+- [x] 理解 Tool Use：先跑通单工具版本，再升级到 to_power_chord + recommend_capo 双工具版本，用 TOOL_FUNCTIONS 字典按 tool_call.function.name 动态路由到真实函数。已验证模型能根据工具 description 正确区分"转 power chord"和"推荐 capo"两种意图（backend/tests/scratch_tool_use.py）
 - [ ] Music Theory Agent：低置信度和弦纠错
 - [ ] Guitar Arrangement Agent：生成多版本编配 + 解释原因（会用到 capo/power_chord/difficulty 的输出）
 - [ ] Fingering Agent：把用户的把位要求转成规则系统参数
@@ -66,6 +66,7 @@
 ## 已知局限（备忘，面试可诚实提及）
 - `recommend_capo` 目前只按"横按数量"排序，没有惩罚"capo 品数过高"（比如 capo=6 这种实际很少用的方案，会和 capo=1 并列最优）。后续可以给 `barre_count` 加一个"capo 越大惩罚越多"的权重。
 - `transpose_chord` 统一把降号（b）翻译成升号（#）表示，输出不会保留原始的降号记谱习惯（比如 Ab 调的和弦转出来会显示成 G# 而不是 Ab）。
+- `recommend_capo(key, chords)` 的 `key` 参数目前完全没有在函数体内被使用（只用了 `chords`），是个"看起来需要但实际没用上"的参数，Tool Use 测试中意外发现（模型传了简化过的 key 值也不影响结果，因为反正没用到）。后续要么删掉、要么用它做更精细的推荐（比如区分大小调影响排序）。
 
 ## 已验证会踩的坑（备忘）
 - **Python 环境混用**：机器上同时有 pyenv 3.9.18 和系统 Python 3.14，`uvicorn` 命令可能解析到错误环境。启动时用 `python -m uvicorn ...` 而不是直接 `uvicorn ...`，先 `which python` 确认在 `.venv` 里。
