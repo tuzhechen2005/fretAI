@@ -2,7 +2,7 @@
 
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 
-**总体进度：约 22%**（骨架搭建完成，规则系统跑通 transpose + voicings + power_chord + capo 枚举）
+**总体进度：约 38%**（里程碑 2、3 完成：规则系统 + 音频上传/查询接口跑通）
 
 ---
 
@@ -12,31 +12,38 @@
 - [ ] `/docs` 页面理解（路由 vs 实现的区别）
 
 ## 里程碑 2：规则系统（services/rules/，纯 Python，无 AI 无数据库）
+依赖关系：voicings（数据基础）← transpose（独立算法）← power_chord / capo（依赖前两者）
 - [x] `transpose.py` — 单个和弦转调 `transpose_chord`
 - [x] 把 `transpose_chord` 接到一个调试用 API 接口，用 curl 验证跑通
 - [x] `voicings.py` — 和弦指法库（7 个常用开放和弦：C/D/E/G/A/Am/Em/Dm）
 - [x] `power_chord.py` — Power Chord 转换（用 6 弦品格公式计算，覆盖全部 12 根音，不依赖指法库）
-- [x] `capo.py` — Capo 推荐（枚举 0-7 品，复用 transpose_progression；发现并修复了降号根音 bug）
-- [ ] `difficulty.py` — 难度评分
-- [ ] `positions.py` — 把位优化算法（较难，可放最后）
+- [x] `capo.py` — Capo 推荐（枚举 0-7 品 + 按横按数排序，发现并修复了降号根音 bug）
+- [x] `difficulty.py` — 难度评分（横按数 + 把位跨度 + 技巧数加权，已验证）
+- [ ] `positions.py` — 把位优化算法（**跳过，放到最后有余力再做**；涉及动态规划，是规则系统里最难的一块，不是必需品）
 
-## 里程碑 3：音频上传 + 数据库
-- [ ] SQLite 建表（Song）
-- [ ] 上传接口：接收音频文件，存本地 + 存数据库记录
-- [ ] 查询接口：根据 song_id 返回歌曲状态
+## 里程碑 3：音频上传 + 数据库（用户自己写——通用 Web 后端技能，与 Agent 无关但重要）
+- [x] SQLite 建表（Song、Arrangement），建表脚本 `app/db/init_db.py`
+- [x] 上传接口：接收音频文件，存本地 + 存数据库记录（curl -F 验证跑通）
+- [x] 查询接口：根据 song_id 返回歌曲状态（含 404 情况验证）
 
-## 里程碑 4：音频分析（services/audio/，librosa）
+## 里程碑 4：音频分析（services/audio/，librosa）—— AI 多带写，重点讲输入输出含义
 - [ ] BPM 检测
 - [ ] Key 检测
 - [ ] 和弦识别（chroma + 模板匹配）
 - [ ] 段落检测
 - [ ] 接入 BackgroundTasks，串成完整 pipeline
 
-## 里程碑 5：Agent 层（重点，产品的核心差异化）
+## 里程碑 5：Agent 层（⭐ 用户明确的重点，会拆到最细）
+
+**架构原则（2026-07-13 讨论确定）**：
+1. 规则系统算"事实"（确定性、可复现），Agent 负责在事实里"挑选和解释"，不让 LLM 直接猜测和弦指法这类需要精确计算的内容。
+2. **保留产品文档 §7 原本的 7 个 Agent 划分（不合并、不再拆细）**：Audio Analysis / Music Theory / Guitar Arrangement / Fingering / Style / Practice Coach / Export。每个 Agent 对应一个明确的"决策职责"，粒度是合适的。
+3. **不要为每个小功能单独开一个 agent**（比如不能有"横按判断 agent""品格计算 agent"这种）。细粒度功能永远停留在 tool 这一层——也就是 `rules/` 目录下已经写好的函数（transpose_chord / recommend_capo / to_power_chord / score_difficulty / get_voicings 等）。7 个 Agent 内部通过 Tool Use 按需调用这些函数，而不是互相之间再发消息、再拆子 agent。这样避免了 multi-agent 系统常见的通信复杂度暴增、调试困难的问题。
+
 - [ ] 打通一次最基础的 LLM API 调用（理解 messages / system prompt）
-- [ ] 理解 Tool Use（LLM 怎么"调用"我们写的规则函数）
+- [ ] 理解 Tool Use：LLM 怎么"调用"我们写的规则函数（recommend_capo / to_power_chord 等）
 - [ ] Music Theory Agent：低置信度和弦纠错
-- [ ] Guitar Arrangement Agent：生成多版本编配 + 解释原因
+- [ ] Guitar Arrangement Agent：生成多版本编配 + 解释原因（会用到 capo/power_chord/difficulty 的输出）
 - [ ] Fingering Agent：把用户的把位要求转成规则系统参数
 - [ ] Editor：自然语言修改编配（"降两调""换低把位"）
 
@@ -53,6 +60,10 @@
 - [ ] 简历项目描述打磨（对照产品文档 §17）
 
 ---
+
+## 已知局限（备忘，面试可诚实提及）
+- `recommend_capo` 目前只按"横按数量"排序，没有惩罚"capo 品数过高"（比如 capo=6 这种实际很少用的方案，会和 capo=1 并列最优）。后续可以给 `barre_count` 加一个"capo 越大惩罚越多"的权重。
+- `transpose_chord` 统一把降号（b）翻译成升号（#）表示，输出不会保留原始的降号记谱习惯（比如 Ab 调的和弦转出来会显示成 G# 而不是 Ab）。
 
 ## 已验证会踩的坑（备忘）
 - **Python 环境混用**：机器上同时有 pyenv 3.9.18 和系统 Python 3.14，`uvicorn` 命令可能解析到错误环境。启动时用 `python -m uvicorn ...` 而不是直接 `uvicorn ...`，先 `which python` 确认在 `.venv` 里。
