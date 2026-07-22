@@ -2,7 +2,7 @@
 
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 
-**总体进度：约 60%**（里程碑 2、3、4 全部完成：规则系统 + 上传/存储 + 音频分析 pipeline 端到端跑通）
+**总体进度：约 62%**（里程碑 2、3、4 完成；里程碑 5 Agent 层起步：LLM API 调用打通）
 
 ---
 
@@ -42,7 +42,7 @@
 2. **保留产品文档 §7 原本的 7 个 Agent 划分（不合并、不再拆细）**：Audio Analysis / Music Theory / Guitar Arrangement / Fingering / Style / Practice Coach / Export。每个 Agent 对应一个明确的"决策职责"，粒度是合适的。
 3. **不要为每个小功能单独开一个 agent**（比如不能有"横按判断 agent""品格计算 agent"这种）。细粒度功能永远停留在 tool 这一层——也就是 `rules/` 目录下已经写好的函数（transpose_chord / recommend_capo / to_power_chord / score_difficulty / get_voicings 等）。7 个 Agent 内部通过 Tool Use 按需调用这些函数，而不是互相之间再发消息、再拆子 agent。这样避免了 multi-agent 系统常见的通信复杂度暴增、调试困难的问题。
 
-- [ ] 打通一次最基础的 LLM API 调用（理解 messages / system prompt）
+- [x] 打通一次最基础的 LLM API 调用（阿里云百炼 qwen3.5-flash，OpenAI 兼容接口，AsyncOpenAI 客户端，已验证 chat.completions.create 端到端跑通）
 - [ ] 理解 Tool Use：LLM 怎么"调用"我们写的规则函数（recommend_capo / to_power_chord 等）
 - [ ] Music Theory Agent：低置信度和弦纠错
 - [ ] Guitar Arrangement Agent：生成多版本编配 + 解释原因（会用到 capo/power_chord/difficulty 的输出）

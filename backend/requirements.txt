@@ -10,8 +10,8 @@ librosa>=0.10
 numpy>=1.26
 soundfile>=0.12
 
-# LLM Agent
-anthropic>=0.40
+# LLM Agent（阿里云百炼 OpenAI 兼容接口）
+openai>=1.0
 
 # 导出
 reportlab>=4.2

@@ -166,6 +166,22 @@
 
 ---
 
+## 11. LLM 供应商：Anthropic API（骨架原始设计）→ 阿里云百炼 DashScope（实际采用）
+
+**最初设计**：搭骨架时（`app/services/agents/client.py`）默认接入 Anthropic 官方 API，用 `anthropic` 这个 Python SDK。
+
+**实际决策**：改用阿里云百炼（DashScope）的 OpenAI 兼容接口，模型用 `qwen3.5-flash`。
+
+**为什么改**：账号/计费体系的实际可用性问题——有现成的阿里云百炼 API Key。技术上完全可行：DashScope 提供了 **OpenAI 兼容模式**（`base_url=https://dashscope.aliyuncs.com/compatible-mode/v1`），所以不需要用阿里云自己的 SDK，直接用 `openai` 这个官方 Python 包、把 `base_url` 指向阿里云即可，调用方式（`client.chat.completions.create(...)`、`messages` 结构）跟对接 OpenAI 官方完全一样。
+
+**这说明的行业现象**：OpenAI 的 API 格式已经事实上成为大模型调用的行业标准，越来越多云厂商（阿里云、字节火山引擎、月之暗面等）都提供"OpenAI 兼容模式"，这让"换 LLM 供应商"这件事的代码改动量降到最低——本质上跟我们之前"数据库从 PostgreSQL 换成 SQLite 只改一行连接字符串"（DECISIONS.md #1）是同一类"面向接口而不是面向具体实现编程"的工程收益。
+
+**模型选型的分阶段策略**：开发/调试阶段选价格最低的档位（`qwen3.5-flash` 属于轻量档），因为这一阶段反复调用是为了验证代码逻辑通不通，不需要模型推理能力多强；等到真正实现需要复杂乐理判断的 Agent（Music Theory Agent、Guitar Arrangement Agent）时，再评估是否需要升级到更高档位的模型（如 `qwen-plus`），把"调试成本"和"最终效果质量"分开考虑，不用一开始就为峰值能力付费。
+
+**面试话术**：可以讲"面向接口编程"在 LLM 供应商选型上的具体体现——因为选用了 OpenAI 兼容的调用方式，理论上以后要切换到 Anthropic、OpenAI 官方或其他兼容厂商，只需要改 `base_url`/`api_key`/`model` 三个配置项，业务逻辑代码（Agent 的 prompt 设计、Tool Use 逻辑）完全不用动。
+
+---
+
 ## 决策记录写作习惯
 
 以后每做一次"改变了原计划"的技术选型，或者踩到一个值得记住的坑，都补一条到这里，格式保持一致：**最初设想 → 实际决策 → 为什么改 → 代价/权衡 → （可选）面试话术**。跟 [PROGRESS.md](PROGRESS.md) 一起提交进 git，两个文件分工不同：PROGRESS 看"做到哪了"，这个文件看"为什么这么做、学到了什么"。
