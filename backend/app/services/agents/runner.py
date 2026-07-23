@@ -14,6 +14,7 @@ async def run_agent_with_tools(
     user_message: str,
     tools: list[dict],
     tool_functions: dict,
+    response_format: dict | None = None,
 ) -> str:
     """跑一次完整的 Tool Use 循环，直到模型给出最终自然语言回复。
 
@@ -26,7 +27,7 @@ async def run_agent_with_tools(
         {"role": "user", "content": user_message},
     ]
 
-    response = await client.chat.completions.create(model=MODEL, messages=messages, tools=tools)
+    response = await client.chat.completions.create(model=MODEL, messages=messages, tools=tools, response_format=response_format)
     reply = response.choices[0].message
 
     while reply.tool_calls:
@@ -45,7 +46,7 @@ async def run_agent_with_tools(
                 }
             )
 
-        response = await client.chat.completions.create(model=MODEL, messages=messages, tools=tools)
+        response = await client.chat.completions.create(model=MODEL, messages=messages, tools=tools, response_format=response_format)
         reply = response.choices[0].message
 
     return reply.content

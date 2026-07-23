@@ -21,6 +21,7 @@
 - [x] `capo.py` — Capo 推荐（枚举 0-7 品 + 按横按数排序，发现并修复了降号根音 bug）
 - [x] `difficulty.py` — 难度评分（横按数 + 把位跨度 + 技巧数加权，已验证）
 - [ ] `positions.py` — 把位优化算法（**跳过，放到最后有余力再做**；涉及动态规划，是规则系统里最难的一块，不是必需品）
+- [x] `theory.py` — 调内和弦规则 `get_diatonic_chords`（复用 transpose.py 的 NOTES/FLAT_TO_SHARP，大调级数 I-vii° 计算，已验证 G major 结果正确；小调暂不支持，已知局限）
 
 ## 里程碑 3：音频上传 + 数据库（用户自己写——通用 Web 后端技能，与 Agent 无关但重要）
 - [x] SQLite 建表（Song、Arrangement），建表脚本 `app/db/init_db.py`
@@ -46,6 +47,8 @@
 - [x] 打通一次最基础的 LLM API 调用（阿里云百炼 qwen3.5-flash，OpenAI 兼容接口，AsyncOpenAI 客户端，已验证 chat.completions.create 端到端跑通）
 - [x] 理解 Tool Use：先跑通单工具版本，再升级到 to_power_chord + recommend_capo 双工具版本，用 TOOL_FUNCTIONS 字典按 tool_call.function.name 动态路由到真实函数。已验证模型能根据工具 description 正确区分"转 power chord"和"推荐 capo"两种意图（backend/tests/scratch_tool_use.py）
 - [x] 抽出通用执行器 `services/agents/runner.py`（run_agent_with_tools，while 循环支持多轮工具调用），用 recommend_capo 场景回归验证，重构后行为与手写脚本一致
+- [x] 验证阿里云百炼支持 `response_format={"type": "json_object"}` 强制 JSON 输出模式（scratch_json_format_test.py），为 Music Theory Agent 需要返回结构化 ChordEvent 列表做准备
+- [x] 验证 tools + response_format 组合可用：runner.py 加了可选的 response_format 参数透传给两次 API 调用，用 recommend_capo 场景测试，模型能正常在"调用工具"和"最终返回纯 JSON"之间正确切换，不互相干扰（scratch_json_tool_combo.py）
 - [ ] Music Theory Agent：低置信度和弦纠错
 - [ ] Guitar Arrangement Agent：生成多版本编配 + 解释原因（会用到 capo/power_chord/difficulty 的输出）
 - [ ] Fingering Agent：把用户的把位要求转成规则系统参数
