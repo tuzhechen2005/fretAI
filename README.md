@@ -34,7 +34,7 @@ fretAI/
     │   └── services/
     │       ├── audio/         # 音频分析：预处理、BPM、Key、和弦识别、段落检测
     │       ├── agents/        # LLM Agent：乐理纠错、编配、指法、解释、自然语言修改
-    │       ├── rules/         # 规则系统：转调、Capo 推荐、Power Chord、把位库、难度评分
+    │       ├── tools/         # 规则系统（Agent 的工具）：转调、Capo 推荐、Power Chord、把位库、难度评分、调内和弦
     │       └── export/        # 导出：Markdown / PDF
     ├── storage/uploads/       # 上传音频存放（MVP 本地文件，后续换对象存储）
     └── tests/
@@ -44,7 +44,7 @@ fretAI/
 
 ```
 音频模型负责识别（services/audio）
-规则系统负责约束（services/rules）
+规则系统负责约束（services/tools）
 Agent 负责决策和解释（services/agents）
 ```
 

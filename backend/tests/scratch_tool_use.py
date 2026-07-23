@@ -6,8 +6,8 @@ import asyncio
 import json
 
 from app.services.agents.client import client, MODEL
-from app.services.rules.power_chord import to_power_chord
-from app.services.rules.capo import recommend_capo
+from app.services.tools.power_chord import to_power_chord
+from app.services.tools.capo import recommend_capo
 
 
 tools = [

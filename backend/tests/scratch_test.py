@@ -1,8 +1,8 @@
-from app.services.rules.transpose import transpose_progression
-from app.services.rules.capo import recommend_capo
-from app.services.rules.power_chord import to_power_chord
-from app.services.rules.voicings import get_voicings
-from app.services.rules.difficulty import score_difficulty
+from app.services.tools.transpose import transpose_progression
+from app.services.tools.capo import recommend_capo
+from app.services.tools.power_chord import to_power_chord
+from app.services.tools.voicings import get_voicings
+from app.services.tools.difficulty import score_difficulty
 
 # 场景：产品文档 §9.2 的例子，F#m - D - A - E
 original_chords = ["F#m", "D", "A", "E"]

@@ -1,8 +1,9 @@
 # FretAI 开发进度
 
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
+> **注**：2026-07-23 起 `services/rules/` 已改名为 `services/tools/`（更贴合 Agent Tool Use 的角色），下文历史记录里出现的 `rules/` 均指这个目录，不再逐条改名。
 
-**总体进度：约 65%**（里程碑 2、3、4 完成；里程碑 5 Agent 层：LLM API 调用 + Tool Use 机制均已打通）
+**总体进度：约 68%**（里程碑 2、3、4 完成；里程碑 5 Agent 层地基打通：LLM 调用 + Tool Use + 通用执行器 runner.py，接下来开始写具体 Agent）
 
 ---
 
@@ -39,11 +40,12 @@
 
 **架构原则（2026-07-13 讨论确定）**：
 1. 规则系统算"事实"（确定性、可复现），Agent 负责在事实里"挑选和解释"，不让 LLM 直接猜测和弦指法这类需要精确计算的内容。
-2. **保留产品文档 §7 原本的 7 个 Agent 划分（不合并、不再拆细）**：Audio Analysis / Music Theory / Guitar Arrangement / Fingering / Style / Practice Coach / Export。每个 Agent 对应一个明确的"决策职责"，粒度是合适的。
+2. **保留产品文档 §7 原本的 7 个 Agent 划分（不合并、不再拆细）**：Audio Analysis / Music Theory / Guitar Arrangement / Fingering / Style / Practice Coach / Export。每个 Agent 对应一个明确的"决策职责"，粒度是合适的。**但这条讲的是"粒度划分是对的"，不代表 MVP 要做全部 7 个**——搭骨架时（`services/agents/__init__.py`）已经明确裁剪：MVP 只做 Music Theory / Guitar Arrangement / Fingering / 自然语言 Editor 这 4 个业务 Agent；Style Agent 和 Practice Coach Agent 归入 Phase 2+，MVP 不做。Audio Analysis 的职责已经被里程碑 4 的 `services/audio/` 覆盖（不需要单独包一层 LLM Agent，纯信号处理即可）；Export 在里程碑 7 做，且大概率不需要 LLM 决策（纯格式转换）。
 3. **不要为每个小功能单独开一个 agent**（比如不能有"横按判断 agent""品格计算 agent"这种）。细粒度功能永远停留在 tool 这一层——也就是 `rules/` 目录下已经写好的函数（transpose_chord / recommend_capo / to_power_chord / score_difficulty / get_voicings 等）。7 个 Agent 内部通过 Tool Use 按需调用这些函数，而不是互相之间再发消息、再拆子 agent。这样避免了 multi-agent 系统常见的通信复杂度暴增、调试困难的问题。
 
 - [x] 打通一次最基础的 LLM API 调用（阿里云百炼 qwen3.5-flash，OpenAI 兼容接口，AsyncOpenAI 客户端，已验证 chat.completions.create 端到端跑通）
 - [x] 理解 Tool Use：先跑通单工具版本，再升级到 to_power_chord + recommend_capo 双工具版本，用 TOOL_FUNCTIONS 字典按 tool_call.function.name 动态路由到真实函数。已验证模型能根据工具 description 正确区分"转 power chord"和"推荐 capo"两种意图（backend/tests/scratch_tool_use.py）
+- [x] 抽出通用执行器 `services/agents/runner.py`（run_agent_with_tools，while 循环支持多轮工具调用），用 recommend_capo 场景回归验证，重构后行为与手写脚本一致
 - [ ] Music Theory Agent：低置信度和弦纠错
 - [ ] Guitar Arrangement Agent：生成多版本编配 + 解释原因（会用到 capo/power_chord/difficulty 的输出）
 - [ ] Fingering Agent：把用户的把位要求转成规则系统参数

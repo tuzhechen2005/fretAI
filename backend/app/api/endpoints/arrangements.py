@@ -1,8 +1,8 @@
 """吉他编配版本生成（产品文档 §6.5、§6.6、§6.7、§7.3、§7.4）。"""
 from fastapi import APIRouter
 
-from app.services.rules.power_chord import to_power_chord
-from app.services.rules.voicings import get_voicings as lookup_voicings
+from app.services.tools.power_chord import to_power_chord
+from app.services.tools.voicings import get_voicings as lookup_voicings
 
 router = APIRouter()
 

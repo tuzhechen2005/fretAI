@@ -1,7 +1,7 @@
 """音频分析结果：Key / BPM / 和弦时间轴 / 段落结构（产品文档 §6.1、§6.2、§6.3）。"""
 from fastapi import APIRouter
 
-from app.services.rules.transpose import transpose_progression
+from app.services.tools.transpose import transpose_progression
 
 router = APIRouter()
 

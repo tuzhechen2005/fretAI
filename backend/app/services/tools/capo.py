@@ -1,8 +1,8 @@
 """Capo 推荐（产品文档 §6.4）：枚举 capo 0-7，对每个方案评估
 开放和弦占比、横按数量、常用指法族（G/C/D/E/Am/Em...），输出多方案排序。
 """
-from app.services.rules.transpose import transpose_progression
-from app.services.rules.voicings import get_voicings
+from app.services.tools.transpose import transpose_progression
+from app.services.tools.voicings import get_voicings
 
 def count_barres(chords: list[str]) -> int:
     count = 0

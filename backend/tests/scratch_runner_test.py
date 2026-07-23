@@ -1,6 +1,6 @@
 import asyncio
 from app.services.agents.runner import run_agent_with_tools
-from app.services.rules.capo import recommend_capo
+from app.services.tools.capo import recommend_capo
 
 
 capo_tool_schema = {
