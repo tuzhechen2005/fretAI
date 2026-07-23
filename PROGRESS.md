@@ -3,7 +3,7 @@
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 > **注**：2026-07-23 起 `services/rules/` 已改名为 `services/tools/`（更贴合 Agent Tool Use 的角色），下文历史记录里出现的 `rules/` 均指这个目录，不再逐条改名。
 
-**总体进度：约 72%**（里程碑 2、3、4 完成；里程碑 5 Agent 层：地基打通 + Music Theory Agent 实现并验证通过，还剩 Guitar Arrangement / Fingering / Editor 三个 Agent）
+**总体进度：约 76%**（里程碑 2、3、4 完成；里程碑 5 Agent 层：Music Theory + Guitar Arrangement 两个 Agent 完成，还剩 Fingering / Editor 两个）
 
 ---
 
@@ -50,7 +50,7 @@
 - [x] 验证阿里云百炼支持 `response_format={"type": "json_object"}` 强制 JSON 输出模式（scratch_json_format_test.py），为 Music Theory Agent 需要返回结构化 ChordEvent 列表做准备
 - [x] 验证 tools + response_format 组合可用：runner.py 加了可选的 response_format 参数透传给两次 API 调用，用 recommend_capo 场景测试，模型能正常在"调用工具"和"最终返回纯 JSON"之间正确切换，不互相干扰（scratch_json_tool_combo.py）
 - [x] Music Theory Agent：`review_chords(key, chords)` 实现完成——system prompt 要求判断调内/离调、结合前后文推理、只对确实可能出错的位置提出修正；接 get_diatonic_chords 工具查调内和弦事实；用 response_format=json_object 返回 {"corrections": [{"index", "chord", "reason"}]}；代码里对越界 index 做了防御（跳过而不是崩溃）。用经典案例 G-D-B-C（G major）验证：正确识别出 B 不在调内，结合前后文给出有依据的修正（判断为 vi 级 Em），并保留了对原始低置信度的引用
-- [ ] Guitar Arrangement Agent：生成多版本编配 + 解释原因（会用到 capo/power_chord/difficulty 的输出）
+- [x] Guitar Arrangement Agent：生成木吉他弹唱版 + 电吉他 Power Chord 版（MVP 范围裁剪，暂不做产品文档里另外 4 种版本）。架构上没有用 Tool Use——`_build_acoustic_arrangement`/`_build_power_chord_arrangement` 纯 Python 直接调用 recommend_capo/get_voicings/to_power_chord/score_difficulty 组装数据（决策已经被规则系统排序确定，不需要 LLM 参与选择），只用 LLM 生成最后的 notes 解释文字，response_format=json_object 输出 `{"acoustic_notes", "power_chord_notes"}`。用 F#m-D-A-E 案例验证：木吉他版结果与产品文档 §7.1 完全一致（Capo 2 弹 Em-C-G-D）；顺带验证了 tools=[] 空列表传给百炼 API 不会报错，模型会直接跳过工具调用给出最终回复
 - [ ] Fingering Agent：把用户的把位要求转成规则系统参数
 - [ ] Editor：自然语言修改编配（"降两调""换低把位"）
 
@@ -139,6 +139,8 @@
 - `transpose_chord` 统一把降号（b）翻译成升号（#）表示，输出不会保留原始的降号记谱习惯（比如 Ab 调的和弦转出来会显示成 G# 而不是 Ab）。
 - `recommend_capo(key, chords)` 的 `key` 参数目前完全没有在函数体内被使用（只用了 `chords`），是个"看起来需要但实际没用上"的参数，Tool Use 测试中意外发现（模型传了简化过的 key 值也不影响结果，因为反正没用到）。后续要么删掉、要么用它做更精细的推荐（比如区分大小调影响排序）。
 - Music Theory Agent 给出的乐理解释文字，偶尔会出现术语引用不够精确的情况（比如把 G 大调的 vii° 说成 "Bdim"，实际应该是 F#dim）——不影响核心判断结论（"B 不在调内、应该修正"这个结论是对的），但如果解释文字要直接展示给用户看，值得后续在 prompt 里加约束提高严谨度。也提醒一个更本质的点：Agent 给的修正是"一个有依据的合理猜测"，不是唯一正确答案（同一个离调和弦可能有好几种合理解释），这也是为什么要保留"候选项 + 用户可修正"机制（产品文档 §14）的原因。
+- `to_power_chord` 只实现了 6 弦根音的 power chord 形状（公式：根音到 6 弦空弦 E 的半音距离 % 12），没有 5 弦根音的版本，也没有"选更合理把位"的判断。当根音在音高上低于 E（比如 D、C#、C）时，`% 12` 取模会把结果"绕" 到很高的品格（例如 D5 算出第 10 品，而不是更常用的 5 弦根音第 5 品附近版本 x577xx，这是产品文档 §7.1 例子里实际给出的指法）。用 Guitar Arrangement Agent 的验证案例（F#m-D-A-E）跑出来时发现这个偏差。完整解决方案（5 弦根音实现 + 智能选把位）属于产品文档 §6.8 把位优化 Agent 的范畴，不在当前 Guitar Arrangement Agent 里顺带解决。
+- Guitar Arrangement Agent 生成的 `notes` 解释文字，喂给 LLM 的 summary 里只包含 `difficulty` 和和弦名（`display`），不包含具体的 `fingering`/`position` 数值，所以模型没有机会核对"品格是否合理"——比如上面那条 D5 品格偏高的问题，模型的解释里说"无需按品"，这个描述其实不准确（D5 实际在第 10 品）。根因是喂给 LLM 的信息本身不够细，不是 LLM 编造的。后续如果要让 notes 更精确，需要把具体指法数据也纳入 prompt。
 
 ## 已验证会踩的坑（备忘）
 - **Python 环境混用**：机器上同时有 pyenv 3.9.18 和系统 Python 3.14，`uvicorn` 命令可能解析到错误环境。启动时用 `python -m uvicorn ...` 而不是直接 `uvicorn ...`，先 `which python` 确认在 `.venv` 里。
