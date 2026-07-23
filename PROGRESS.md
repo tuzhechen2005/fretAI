@@ -17,7 +17,7 @@
 - [x] `transpose.py` — 单个和弦转调 `transpose_chord`
 - [x] 把 `transpose_chord` 接到一个调试用 API 接口，用 curl 验证跑通
 - [x] `voicings.py` — 和弦指法库（7 个常用开放和弦：C/D/E/G/A/Am/Em/Dm）
-- [x] `power_chord.py` — Power Chord 转换（用 6 弦品格公式计算，覆盖全部 12 根音，不依赖指法库）
+- [x] `power_chord.py` — Power Chord 转换（用 6 弦品格公式计算，覆盖全部 12 根音，不依赖指法库；后补：`prefer_position` 参数真正实现，可在多个八度候选里选最接近的品格，详见 DECISIONS.md #14）
 - [x] `capo.py` — Capo 推荐（枚举 0-7 品 + 按横按数排序，发现并修复了降号根音 bug）
 - [x] `difficulty.py` — 难度评分（横按数 + 把位跨度 + 技巧数加权，已验证）
 - [ ] `positions.py` — 把位优化算法（**跳过，放到最后有余力再做**；涉及动态规划，是规则系统里最难的一块，不是必需品）

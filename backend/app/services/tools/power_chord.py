@@ -20,8 +20,15 @@ def to_power_chord(chord: str, prefer_position: int | None = None) -> dict:
     else:
         root = chord[:1]
 
-    # 根音相对 6 弦空弦音 E 的品格数（0-11）
-    fret = (NOTES.index(root) - NOTES.index("E")) % 12
+    base_fret = (NOTES.index(root) - NOTES.index("E")) % 12
+
+    if prefer_position is not None:
+        # 枚举 base_fret 加减 12 的等效位置（也就是差一个八度），
+        # 在合法范围内（0-20 品，多数吉他实际可弹范围），选离 prefer_position 最近的一个
+        candidates = [f for f in (base_fret, base_fret + 12, base_fret - 12) if 0 <= f <= 20]
+        fret = min(candidates, key=lambda f: abs(f - prefer_position))
+    else:
+        fret = base_fret
 
     if fret == 0:
         fingering = "022xxx"
