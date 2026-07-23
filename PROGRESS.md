@@ -3,7 +3,7 @@
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 > **注**：2026-07-23 起 `services/rules/` 已改名为 `services/tools/`（更贴合 Agent Tool Use 的角色），下文历史记录里出现的 `rules/` 均指这个目录，不再逐条改名。
 
-**总体进度：约 68%**（里程碑 2、3、4 完成；里程碑 5 Agent 层地基打通：LLM 调用 + Tool Use + 通用执行器 runner.py，接下来开始写具体 Agent）
+**总体进度：约 72%**（里程碑 2、3、4 完成；里程碑 5 Agent 层：地基打通 + Music Theory Agent 实现并验证通过，还剩 Guitar Arrangement / Fingering / Editor 三个 Agent）
 
 ---
 
@@ -49,7 +49,7 @@
 - [x] 抽出通用执行器 `services/agents/runner.py`（run_agent_with_tools，while 循环支持多轮工具调用），用 recommend_capo 场景回归验证，重构后行为与手写脚本一致
 - [x] 验证阿里云百炼支持 `response_format={"type": "json_object"}` 强制 JSON 输出模式（scratch_json_format_test.py），为 Music Theory Agent 需要返回结构化 ChordEvent 列表做准备
 - [x] 验证 tools + response_format 组合可用：runner.py 加了可选的 response_format 参数透传给两次 API 调用，用 recommend_capo 场景测试，模型能正常在"调用工具"和"最终返回纯 JSON"之间正确切换，不互相干扰（scratch_json_tool_combo.py）
-- [ ] Music Theory Agent：低置信度和弦纠错
+- [x] Music Theory Agent：`review_chords(key, chords)` 实现完成——system prompt 要求判断调内/离调、结合前后文推理、只对确实可能出错的位置提出修正；接 get_diatonic_chords 工具查调内和弦事实；用 response_format=json_object 返回 {"corrections": [{"index", "chord", "reason"}]}；代码里对越界 index 做了防御（跳过而不是崩溃）。用经典案例 G-D-B-C（G major）验证：正确识别出 B 不在调内，结合前后文给出有依据的修正（判断为 vi 级 Em），并保留了对原始低置信度的引用
 - [ ] Guitar Arrangement Agent：生成多版本编配 + 解释原因（会用到 capo/power_chord/difficulty 的输出）
 - [ ] Fingering Agent：把用户的把位要求转成规则系统参数
 - [ ] Editor：自然语言修改编配（"降两调""换低把位"）
@@ -138,6 +138,7 @@
 - `recommend_capo` 目前只按"横按数量"排序，没有惩罚"capo 品数过高"（比如 capo=6 这种实际很少用的方案，会和 capo=1 并列最优）。后续可以给 `barre_count` 加一个"capo 越大惩罚越多"的权重。
 - `transpose_chord` 统一把降号（b）翻译成升号（#）表示，输出不会保留原始的降号记谱习惯（比如 Ab 调的和弦转出来会显示成 G# 而不是 Ab）。
 - `recommend_capo(key, chords)` 的 `key` 参数目前完全没有在函数体内被使用（只用了 `chords`），是个"看起来需要但实际没用上"的参数，Tool Use 测试中意外发现（模型传了简化过的 key 值也不影响结果，因为反正没用到）。后续要么删掉、要么用它做更精细的推荐（比如区分大小调影响排序）。
+- Music Theory Agent 给出的乐理解释文字，偶尔会出现术语引用不够精确的情况（比如把 G 大调的 vii° 说成 "Bdim"，实际应该是 F#dim）——不影响核心判断结论（"B 不在调内、应该修正"这个结论是对的），但如果解释文字要直接展示给用户看，值得后续在 prompt 里加约束提高严谨度。也提醒一个更本质的点：Agent 给的修正是"一个有依据的合理猜测"，不是唯一正确答案（同一个离调和弦可能有好几种合理解释），这也是为什么要保留"候选项 + 用户可修正"机制（产品文档 §14）的原因。
 
 ## 已验证会踩的坑（备忘）
 - **Python 环境混用**：机器上同时有 pyenv 3.9.18 和系统 Python 3.14，`uvicorn` 命令可能解析到错误环境。启动时用 `python -m uvicorn ...` 而不是直接 `uvicorn ...`，先 `which python` 确认在 `.venv` 里。
