@@ -3,7 +3,7 @@
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 > **注**：2026-07-23 起 `services/rules/` 已改名为 `services/tools/`（更贴合 Agent Tool Use 的角色），下文历史记录里出现的 `rules/` 均指这个目录，不再逐条改名。
 
-**总体进度：约 76%**（里程碑 2、3、4 完成；里程碑 5 Agent 层：Music Theory + Guitar Arrangement 两个 Agent 完成，还剩 Fingering / Editor 两个）
+**总体进度：约 80%**（里程碑 2、3、4 完成；里程碑 5 Agent 层：Music Theory + Guitar Arrangement + Fingering 三个 Agent 完成，还剩 Editor 一个）
 
 ---
 
@@ -51,7 +51,7 @@
 - [x] 验证 tools + response_format 组合可用：runner.py 加了可选的 response_format 参数透传给两次 API 调用，用 recommend_capo 场景测试，模型能正常在"调用工具"和"最终返回纯 JSON"之间正确切换，不互相干扰（scratch_json_tool_combo.py）
 - [x] Music Theory Agent：`review_chords(key, chords)` 实现完成——system prompt 要求判断调内/离调、结合前后文推理、只对确实可能出错的位置提出修正；接 get_diatonic_chords 工具查调内和弦事实；用 response_format=json_object 返回 {"corrections": [{"index", "chord", "reason"}]}；代码里对越界 index 做了防御（跳过而不是崩溃）。用经典案例 G-D-B-C（G major）验证：正确识别出 B 不在调内，结合前后文给出有依据的修正（判断为 vi 级 Em），并保留了对原始低置信度的引用
 - [x] Guitar Arrangement Agent：生成木吉他弹唱版 + 电吉他 Power Chord 版（MVP 范围裁剪，暂不做产品文档里另外 4 种版本）。架构上没有用 Tool Use——`_build_acoustic_arrangement`/`_build_power_chord_arrangement` 纯 Python 直接调用 recommend_capo/get_voicings/to_power_chord/score_difficulty 组装数据（决策已经被规则系统排序确定，不需要 LLM 参与选择），只用 LLM 生成最后的 notes 解释文字，response_format=json_object 输出 `{"acoustic_notes", "power_chord_notes"}`。用 F#m-D-A-E 案例验证：木吉他版结果与产品文档 §7.1 完全一致（Capo 2 弹 Em-C-G-D）；顺带验证了 tools=[] 空列表传给百炼 API 不会报错，模型会直接跳过工具调用给出最终回复
-- [ ] Fingering Agent：把用户的把位要求转成规则系统参数
+- [x] Fingering Agent：`optimize_fingering(chords, user_request)` 实现完成——LLM 判断请求是否属于"power chord 换把位"这一支持的场景（不支持时诚实拒绝，不做假功能），提取 prefer_position 数字，调用 to_power_chord 生成结果。用产品文档 §9.2 场景验证：不支持场景（换开放和弦把位）被正确诊断拒绝；支持场景端到端测试暴露出 to_power_chord 品格选择的系统性局限（4 个和弦里只有 2 个真正落在"5 品附近"），详见 DECISIONS.md #15，判断为超出 Fingering Agent 范畴、留给未来的把位优化 Agent（§6.8）解决
 - [ ] Editor：自然语言修改编配（"降两调""换低把位"）
 
 ## 里程碑 6：前端页面
@@ -117,6 +117,13 @@
 
 ### 实验方法论
 - [ ] 设计一份"如果要做 A/B 测试对比两版 prompt"的方案（对照组划分、评估指标），不一定要真的上线跑
+
+---
+
+## 里程碑 10：求职策略 —— 补一个 Java 技术栈项目（FretAI 完成之后，独立项目，不影响 FretAI 本身）
+**背景（2026-07-24）**：用户看到网传数据（未经验证，具体数字存疑）说纯 AI Agent 项目简历响应率偏低，Java + Agent 组合响应率更高。讨论后达成共识：**不对 FretAI 做任何改动**（中途换技术栈成本高、收益存疑，Python 生态在音频处理/LLM SDK 上更成熟，FretAI 保持现状是对的选择）。计划是 FretAI 完成后，**另开一个独立的 Java（Spring Boot 之类）项目，也集成 LLM/Agent 相关能力**，用来补足"传统后端工程能力"这个技能点，两个项目并列展示、互相印证，而不是互相替代。
+- [ ] FretAI 完成后再启动，不占用当前进度
+- [ ] 选题待定：可以是全新场景，也可以是"用 Java 技术栈把 Agent 集成进一个更贴近企业存量系统场景"的项目（比如很多公司需要把 LLM 能力嫁接进已有 Java 系统，这本身也是真实的技能点）
 
 ### 模型选型的调研深度
 - [ ] **横向对比调研**：针对"和弦纠错""编配解释"等具体任务，用相同测试用例对比多个候选模型（qwen-turbo/plus/max，可扩展到 GLM、DeepSeek 等同价位厂商）的准确率、响应速度、Tool Use 稳定性、成本，写清楚最终选型的权衡过程，不只是"有现成 key 所以用它"
