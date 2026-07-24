@@ -3,7 +3,7 @@
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 > **注**：2026-07-23 起 `services/rules/` 已改名为 `services/tools/`（更贴合 Agent Tool Use 的角色），下文历史记录里出现的 `rules/` 均指这个目录，不再逐条改名。
 
-**总体进度：约 80%**（里程碑 2、3、4 完成；里程碑 5 Agent 层：Music Theory + Guitar Arrangement + Fingering 三个 Agent 完成，还剩 Editor 一个）
+**总体进度：约 84%**（里程碑 2、3、4、5 全部完成——4 个业务 Agent 全部实现并验证。剩余：里程碑 6 前端页面、里程碑 7 导出+收尾）
 
 ---
 
@@ -52,7 +52,7 @@
 - [x] Music Theory Agent：`review_chords(key, chords)` 实现完成——system prompt 要求判断调内/离调、结合前后文推理、只对确实可能出错的位置提出修正；接 get_diatonic_chords 工具查调内和弦事实；用 response_format=json_object 返回 {"corrections": [{"index", "chord", "reason"}]}；代码里对越界 index 做了防御（跳过而不是崩溃）。用经典案例 G-D-B-C（G major）验证：正确识别出 B 不在调内，结合前后文给出有依据的修正（判断为 vi 级 Em），并保留了对原始低置信度的引用
 - [x] Guitar Arrangement Agent：生成木吉他弹唱版 + 电吉他 Power Chord 版（MVP 范围裁剪，暂不做产品文档里另外 4 种版本）。架构上没有用 Tool Use——`_build_acoustic_arrangement`/`_build_power_chord_arrangement` 纯 Python 直接调用 recommend_capo/get_voicings/to_power_chord/score_difficulty 组装数据（决策已经被规则系统排序确定，不需要 LLM 参与选择），只用 LLM 生成最后的 notes 解释文字，response_format=json_object 输出 `{"acoustic_notes", "power_chord_notes"}`。用 F#m-D-A-E 案例验证：木吉他版结果与产品文档 §7.1 完全一致（Capo 2 弹 Em-C-G-D）；顺带验证了 tools=[] 空列表传给百炼 API 不会报错，模型会直接跳过工具调用给出最终回复
 - [x] Fingering Agent：`optimize_fingering(chords, user_request)` 实现完成——LLM 判断请求是否属于"power chord 换把位"这一支持的场景（不支持时诚实拒绝，不做假功能），提取 prefer_position 数字，调用 to_power_chord 生成结果。用产品文档 §9.2 场景验证：不支持场景（换开放和弦把位）被正确诊断拒绝；支持场景端到端测试暴露出 to_power_chord 品格选择的系统性局限（4 个和弦里只有 2 个真正落在"5 品附近"），详见 DECISIONS.md #15，判断为超出 Fingering Agent 范畴、留给未来的把位优化 Agent（§6.8）解决
-- [ ] Editor：自然语言修改编配（"降两调""换低把位"）
+- [x] Editor：`apply_edit(arrangement, message)` 实现完成——第一个真正用上多工具 Tool Use 动态路由的 Agent（LLM 自己判断该调用 transpose_progression 还是 to_power_chord）；范围裁剪为只支持转调 + 改 power chord（optimize_positions 从未实现，"换低把位""不要横按"这类暂不支持）；用 model_copy 保证不污染原始 Arrangement 对象。用 F#m-D-A-E 案例验证：降两调、改 power chord 两种场景都正确。踩坑：第一版输出格式只让 LLM 返回和弦名字符串列表，导致 power chord 场景下 fingering/position 是写死的空值——修复为代码层面用 _build_arranged_chord 按和弦名格式（是否以"5"结尾）重新查真实指法，不依赖 LLM 转述数字
 
 ## 里程碑 6：前端页面
 - [ ] 上传组件 + 跳转分析页
