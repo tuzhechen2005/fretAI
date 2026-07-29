@@ -21,7 +21,7 @@ backend/storage/uploads/*
 *.sqlite3
 
 # Debug scratch output（一次性调试产物，脚本本身 backend/tests/scratch_*.py 仍会提交）
-backend/tests/scratch_*_output*.json
+backend/tests/scratch_*.json
 
 # OS / IDE
 .DS_Store

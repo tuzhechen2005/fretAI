@@ -60,8 +60,10 @@
 - [x] `runner.py` 加 `AgentTrace` 返回结构（记录每轮 Tool Use 的工具名/参数/结果，不只是最终字符串），4 个 Agent 文件（arrangement/editor/theory/fingering）同步改造调用点和返回签名，为调试/前端展示 Agent 思考过程做准备
 - [x] `arrangements.py`：`generate_arrangements`（查库拿 analysis → 反序列化 → 调 Guitar Arrangement Agent → 存库）、`list_arrangements`、`get_arrangement` 三个端点实现完成，用真实歌曲端到端验证跑通
 - [x] `chat.py`：`modify_arrangement` 接 Editor Agent 的 `apply_edit`，编辑语义定为覆盖原 arrangement_id（不保留历史版本）。端到端测试暴露并解决了一整条排查链——大批量和弦（176个）场景下 LLM 完全不调用 `to_power_chord` 工具、直接编造结果（"lazy tool use"），根因不是数量而是模型判断任务无需工具；解法是新增批量工具 `to_power_chord_batch` + `runner.py` 加 `force_tool_use` 用 `tool_choice="required"` 强制调用，过程中连续踩坑并解决：qwen3.5-flash thinking mode 与 tool_choice 冲突（需 `extra_body={"enable_thinking": False}`）、`response_format=json_object` 要求 messages 含小写"json"、`tool_choice="required"` 与 `response_format` 同时生效会互相冲突（改成分两次请求规避）；另外修复了组装逻辑用错字典 key、LLM 传参数类型不可靠（字符串"5"而非整数 5，加 `int()` 容错）两个衍生 bug。最终用真实歌曲 176 和弦完整验证通过。完整排查过程详见 ISSUES.md #5
-- [ ] `analysis.py`：`get_analysis`/`transpose`/`correct_chord` 三个端点还是 NotImplementedError，待接
+- [x] `analysis.py`：`get_analysis`（查库反序列化返回）、`transpose`（取和弦列表调 `transpose_progression`，`zip` 配对写回每个 `ChordEvent.chord`）、`correct_chord`（定点修改指定 index 的和弦，标记 `user_corrected=True`，越界 index 返回 422）三个端点实现完成，抽了 `_get_analyzed_song` 共用前置校验（404/409）。用真实歌曲验证：单独修正 `chords[0]` 不影响其余和弦；`transpose(semitones=-2)` 后所有和弦整体降 2 半音（`Am→Gm`、`C#→B` 等）且和弦性质不变，持久化生效
 - [ ] `export.py`：里程碑 7 范围
+
+**里程碑 6 第一步完成**：`arrangements.py`/`chat.py`/`analysis.py` 全部端点接通并验证，前端所需的后端能力已就绪。
 
 ### 第二步：前端页面（对着已有骨架填内容，骨架已就绪：types/index.ts、lib/api.ts、三个页面空壳、四个组件目录 README）
 - [ ] 上传组件 + 跳转分析页
