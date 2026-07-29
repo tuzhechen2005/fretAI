@@ -1,8 +1,10 @@
 /**
- * 分析页（产品文档 §15.2）：
- * 顶部歌曲信息（Key/BPM），中间波形 + 和弦时间轴，
- * 左侧段落结构，底部播放控制（变速/变调/循环）。
+ * 分析页（产品文档 §15.2）。
+ * MVP 简化版：Key/BPM + 和弦列表，轮询状态直到分析完成。
+ * 波形图、时间轴播放高亮、段落结构、播放控制留待后续迭代。
  */
+import { AnalysisView } from "@/components/analysis/AnalysisView";
+
 export default async function AnalysisPage({
   params,
 }: {
@@ -10,10 +12,8 @@ export default async function AnalysisPage({
 }) {
   const { id } = await params;
   return (
-    <main className="p-6">
-      {/* TODO: 轮询 GET /songs/{id} 直到分析完成，然后渲染：
-          <WaveformView /> + <ChordTimeline /> + <PlayerControls /> */}
-      <p className="text-gray-500">分析页：song {id}</p>
+    <main className="mx-auto max-w-3xl p-6">
+      <AnalysisView songId={id} />
     </main>
   );
 }

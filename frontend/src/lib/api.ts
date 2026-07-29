@@ -1,5 +1,5 @@
 /** 后端 API client。所有请求统一走这里，方便加错误处理和鉴权。 */
-import type { Arrangement, Song, SongAnalysisResult } from "@/types";
+import type { AgentTrace, Arrangement, Song, SongAnalysisResult } from "@/types";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
@@ -26,18 +26,16 @@ export const api = {
     }),
 
   generateArrangements: (id: string) =>
-    request<Arrangement[]>(`/songs/${id}/arrangements`, { method: "POST" }),
+    request<{ arrangements: Arrangement[]; trace: AgentTrace }>(`/songs/${id}/arrangements`, {
+      method: "POST",
+    }),
 
   listArrangements: (id: string) => request<Arrangement[]>(`/songs/${id}/arrangements`),
 
   modifyArrangement: (songId: string, arrangementId: string, message: string) =>
-    request<{ arrangement: Arrangement; reply: string }>(
-      `/songs/${songId}/arrangements/${arrangementId}/chat`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message }),
-      },
+    request<{ arrangement: Arrangement; reply: string; trace: AgentTrace }>(
+      `/songs/${songId}/arrangements/${arrangementId}/chat?message=${encodeURIComponent(message)}`,
+      { method: "POST" },
     ),
 
   audioUrl: (id: string) => `${BASE}/songs/${id}/audio`,

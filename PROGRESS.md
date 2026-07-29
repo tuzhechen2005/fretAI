@@ -3,7 +3,7 @@
 > 每完成一项就把 `[ ]` 改成 `[x]`，并更新顶部总体进度。这个文件跟代码一起提交，跨会话可查。
 > **注**：2026-07-23 起 `services/rules/` 已改名为 `services/tools/`（更贴合 Agent Tool Use 的角色），下文历史记录里出现的 `rules/` 均指这个目录，不再逐条改名。
 
-**总体进度：约 84%**（里程碑 2、3、4、5 全部完成——4 个业务 Agent 全部实现并验证。剩余：里程碑 6 前端页面、里程碑 7 导出+收尾）
+**总体进度：约 90%**（里程碑 2-6 全部完成——4 个业务 Agent、API 端点串联、前端三页面全部跑通，上传→分析→编配→自然语言修改端到端闭环验证通过。剩余：里程碑 7 导出+收尾，以及和弦时间轴可视化/和弦指法图等简化项，视时间决定是否回补）
 
 ---
 
@@ -66,10 +66,12 @@
 **里程碑 6 第一步完成**：`arrangements.py`/`chat.py`/`analysis.py` 全部端点接通并验证，前端所需的后端能力已就绪。
 
 ### 第二步：前端页面（对着已有骨架填内容，骨架已就绪：types/index.ts、lib/api.ts、三个页面空壳、四个组件目录 README）
-- [ ] 上传组件 + 跳转分析页
-- [ ] 和弦时间轴展示（含播放高亮）
-- [ ] 编配页：多版本卡片 + 和弦图
-- [ ] 自然语言修改输入框
+- [x] 上传组件（`components/upload/UploadForm.tsx`）：文件选择 + 调用 `api.uploadSong` + 跳转 `/songs/[id]`，三态状态机（idle/uploading/error）。浏览器验证通过
+- [x] 分析页（`components/analysis/AnalysisView.tsx`）：`useEffect` 递归 `setTimeout` 轮询歌曲状态直到 `done`/`failed`，用 `cancelled` 标记位处理组件卸载时的竞态；展示 Key/BPM/拍号 + 和弦列表（平铺展示，非时间轴可视化）。**简化范围**：波形图、按小节排列的时间轴、播放高亮、段落结构展示未做，留待后续需要时再补
+- [x] 编配页（`components/chord/ArrangementsView.tsx` + `ArrangementCard.tsx`）：进页面先 `listArrangements` 查已有编配，没有才触发 `generateArrangements`（避免重复调用 LLM）；卡片展示难度/capo/和弦列表/notes；父组件（ArrangementsView）作为编配列表唯一数据源，子组件通过 `onUpdated` 回调上报变更，用 `arrangement_id` 精确定位替换。**简化范围**：和弦指法图（ChordDiagram SVG 品格图）未做，用文字标签 + title 提示代替
+- [x] 自然语言修改输入框：接入 `ArrangementCard` 底部，调用 `api.modifyArrangement`，回车或点击提交，成功后通过回调更新父组件状态、展示 Agent 回复文字
+- [x] 修复骨架阶段遗留的类型不匹配：`lib/api.ts` 的 `generateArrangements`/`modifyArrangement` 返回类型跟里程碑 6 第一步实际实现的后端响应格式对不上（缺 `trace` 字段、`generateArrangements` 少一层 `{arrangements, trace}` 包装、`modifyArrangement` 误用 JSON body 而后端实际用查询参数），补充 `AgentTrace`/`ToolCallRecord`/`TraceStep` 前端类型并订正
+- [x] 三个页面全部浏览器手动验证通过：上传 → 分析（轮询展示）→ 编配（生成 + 自然语言修改）完整闭环跑通
 
 ## 里程碑 7：导出 + 收尾
 - [ ] Markdown 导出

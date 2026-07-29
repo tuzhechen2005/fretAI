@@ -58,3 +58,21 @@ export interface Song {
   filename: string;
   status: SongStatus;
 }
+
+/** Agent Tool Use 循环的执行轨迹（backend/app/schemas/trace.py），用于展示 Agent 思考过程。 */
+export interface ToolCallRecord {
+  tool_name: string;
+  arguments: Record<string, unknown>;
+  result: unknown;
+}
+
+export interface TraceStep {
+  role: "tool_call" | "final";
+  tool_calls: ToolCallRecord[];
+  content: string | null;
+}
+
+export interface AgentTrace {
+  steps: TraceStep[];
+  final_content: string;
+}
