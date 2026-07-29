@@ -72,6 +72,7 @@
 - [x] 自然语言修改输入框：接入 `ArrangementCard` 底部，调用 `api.modifyArrangement`，回车或点击提交，成功后通过回调更新父组件状态、展示 Agent 回复文字
 - [x] 修复骨架阶段遗留的类型不匹配：`lib/api.ts` 的 `generateArrangements`/`modifyArrangement` 返回类型跟里程碑 6 第一步实际实现的后端响应格式对不上（缺 `trace` 字段、`generateArrangements` 少一层 `{arrangements, trace}` 包装、`modifyArrangement` 误用 JSON body 而后端实际用查询参数），补充 `AgentTrace`/`ToolCallRecord`/`TraceStep` 前端类型并订正
 - [x] 三个页面全部浏览器手动验证通过：上传 → 分析（轮询展示）→ 编配（生成 + 自然语言修改）完整闭环跑通
+- [x] 首页历史记录列表（`components/upload/SongList.tsx`）：补上后端遗漏的 `GET /songs`（`list_songs` 之前也是 NotImplementedError），按 `created_at` 倒序返回；`Song` 模型新增 `created_at` 字段（MVP 无 alembic，直接删库重建，测试数据本来就该丢）。前端列表点击可跳转回对应歌曲的分析页，状态用中文+颜色区分（排队中/分析中/已完成/失败）；加载失败静默隐藏，不影响核心上传流程。浏览器验证：上传后回首页能看到记录、状态随分析进度更新、点击可跳转
 
 ## 里程碑 7：导出 + 收尾
 - [ ] Markdown 导出

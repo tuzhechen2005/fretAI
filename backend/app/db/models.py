@@ -3,7 +3,9 @@
 分析结果和编配结果以 JSON 列存储（结构见 app/schemas/），
 避免 MVP 阶段过度设计关系表；换 PostgreSQL 后可迁移为 JSONB。
 """
-from sqlalchemy import JSON, String
+from datetime import datetime, timezone
+
+from sqlalchemy import JSON, DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.database import Base
@@ -17,6 +19,9 @@ class Song(Base):
     file_path: Mapped[str]
     status: Mapped[str] = mapped_column(default="pending")  # pending/analyzing/done/failed
     analysis: Mapped[dict | None] = mapped_column(JSON, nullable=True)  # SongAnalysisResult
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
 
 
 class Arrangement(Base):

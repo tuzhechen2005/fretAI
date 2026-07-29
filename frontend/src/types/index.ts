@@ -57,6 +57,7 @@ export interface Song {
   id: string;
   filename: string;
   status: SongStatus;
+  created_at?: string; // GET /songs 列表接口才带这个字段，upload/getSong 不带
 }
 
 /** Agent Tool Use 循环的执行轨迹（backend/app/schemas/trace.py），用于展示 Agent 思考过程。 */

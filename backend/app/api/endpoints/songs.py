@@ -2,6 +2,7 @@
 import uuid
 
 from fastapi import APIRouter, Depends, UploadFile, HTTPException, BackgroundTasks
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
@@ -52,8 +53,14 @@ async def upload_song(file: UploadFile,     background_tasks: BackgroundTasks, d
 
 
 @router.get("")
-async def list_songs():
-    raise NotImplementedError
+async def list_songs(db: AsyncSession = Depends(get_db)):
+    """按上传时间倒序返回所有歌曲的基本信息，供首页展示历史记录。"""
+    result = await db.execute(select(Song).order_by(Song.created_at.desc()))
+    songs = result.scalars().all()
+    return [
+        {"id": s.id, "filename": s.filename, "status": s.status, "created_at": s.created_at}
+        for s in songs
+    ]
 
 
 @router.get("/{song_id}")

@@ -16,6 +16,8 @@ export const api = {
     return request("/songs", { method: "POST", body: form });
   },
 
+  listSongs: () => request<Song[]>("/songs"),
+
   getSong: (id: string) => request<Song>(`/songs/${id}`),
 
   getAnalysis: (id: string) => request<SongAnalysisResult>(`/songs/${id}/analysis`),
