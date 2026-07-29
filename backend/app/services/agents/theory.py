@@ -9,6 +9,7 @@
 import json
 
 from app.schemas.song import ChordEvent
+from app.schemas.trace import AgentTrace
 from app.services.agents.runner import run_agent_with_tools
 from app.services.tools.theory import get_diatonic_chords
 
@@ -44,13 +45,13 @@ diatonic_tool_schema = {
 }
 
 
-async def review_chords(key: str, chords: list[ChordEvent]) -> list[ChordEvent]:
+async def review_chords(key: str, chords: list[ChordEvent]) -> tuple[list[ChordEvent], AgentTrace]:
     chord_list_text = "\n".join(
         f"{i}: {c.chord}（置信度 {c.confidence}）" for i, c in enumerate(chords)
     )
     user_message = f"调性：{key}\n和弦进行：\n{chord_list_text}"
 
-    reply = await run_agent_with_tools(
+    trace = await run_agent_with_tools(
         system_prompt=SYSTEM_PROMPT,
         user_message=user_message,
         tools=[diatonic_tool_schema],
@@ -58,7 +59,7 @@ async def review_chords(key: str, chords: list[ChordEvent]) -> list[ChordEvent]:
         response_format={"type": "json_object"},
     )
 
-    result = json.loads(reply)
+    result = json.loads(trace.final_content)
 
     for correction in result["corrections"]:
         index = correction["index"]
@@ -67,4 +68,4 @@ async def review_chords(key: str, chords: list[ChordEvent]) -> list[ChordEvent]:
         chords[index].chord = correction["chord"]
         chords[index].reason = correction["reason"]
 
-    return chords
+    return chords, trace

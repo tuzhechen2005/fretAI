@@ -7,6 +7,7 @@
 """
 from app.schemas.profile import UserGuitarProfile
 from app.schemas.song import SongAnalysisResult
+from app.schemas.trace import AgentTrace
 import uuid
 from app.schemas.arrangement import Arrangement, ArrangedChord
 from app.services.tools.capo import recommend_capo
@@ -90,7 +91,7 @@ def _build_power_chord_arrangement(song_id: str, chords: list[str]) -> Arrangeme
 async def generate_arrangements(
     analysis: SongAnalysisResult,
     profile: UserGuitarProfile,
-) -> list[Arrangement]:
+) -> tuple[list[Arrangement], AgentTrace]:
     song_id = analysis.song_id
     key = analysis.key
     chords = [c.chord for c in analysis.chords]
@@ -104,16 +105,16 @@ async def generate_arrangements(
         f"电吉他 Power Chord 版：难度 {power_chord.difficulty}/10，"
         f"和弦：{[c.display for c in power_chord.chords]}"
     )
-    reply = await run_agent_with_tools(
+    trace = await run_agent_with_tools(
         system_prompt=NOTES_SYSTEM_PROMPT,
         user_message=summary,
         tools=[],
         tool_functions={},
         response_format={"type": "json_object"},
     )
-    notes = json.loads(reply)
+    notes = json.loads(trace.final_content)
 
     acoustic.notes = notes["acoustic_notes"]
     power_chord.notes = notes["power_chord_notes"]
 
-    return [acoustic, power_chord]
+    return [acoustic, power_chord], trace

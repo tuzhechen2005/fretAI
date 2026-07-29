@@ -6,6 +6,7 @@
 import json
 
 from app.schemas.arrangement import ArrangedChord
+from app.schemas.trace import AgentTrace
 from app.services.agents.runner import run_agent_with_tools
 from app.services.tools.power_chord import to_power_chord
 
@@ -28,21 +29,21 @@ SYSTEM_PROMPT = """你是一个吉他指法调整助手。用户会给你一段�
 async def optimize_fingering(
     chords: list[str],
     user_request: str,
-) -> tuple[list[ArrangedChord] | None, str]:
-    """返回 (优化后的指法列表, 说明文本)。如果请求不被支持，指法列表是 None。"""
+) -> tuple[list[ArrangedChord] | None, str, AgentTrace]:
+    """返回 (优化后的指法列表, 说明文本, trace)。如果请求不被支持，指法列表是 None。"""
     user_message = f"和弦进行：{chords}\n用户要求：{user_request}"
 
-    reply = await run_agent_with_tools(
+    trace = await run_agent_with_tools(
         system_prompt=SYSTEM_PROMPT,
         user_message=user_message,
         tools=[],
         tool_functions={},
         response_format={"type": "json_object"},
     )
-    parsed = json.loads(reply)
+    parsed = json.loads(trace.final_content)
 
     if not parsed["supported"]:
-        return None, parsed["explanation"]
+        return None, parsed["explanation"], trace
 
     prefer_position = parsed["prefer_position"]
     arranged_chords = [
@@ -55,4 +56,4 @@ async def optimize_fingering(
         for chord in chords
     ]
 
-    return arranged_chords, parsed["explanation"]
+    return arranged_chords, parsed["explanation"], trace
