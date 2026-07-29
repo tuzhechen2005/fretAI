@@ -73,6 +73,12 @@
 - [x] 修复骨架阶段遗留的类型不匹配：`lib/api.ts` 的 `generateArrangements`/`modifyArrangement` 返回类型跟里程碑 6 第一步实际实现的后端响应格式对不上（缺 `trace` 字段、`generateArrangements` 少一层 `{arrangements, trace}` 包装、`modifyArrangement` 误用 JSON body 而后端实际用查询参数），补充 `AgentTrace`/`ToolCallRecord`/`TraceStep` 前端类型并订正
 - [x] 三个页面全部浏览器手动验证通过：上传 → 分析（轮询展示）→ 编配（生成 + 自然语言修改）完整闭环跑通
 - [x] 首页历史记录列表（`components/upload/SongList.tsx`）：补上后端遗漏的 `GET /songs`（`list_songs` 之前也是 NotImplementedError），按 `created_at` 倒序返回；`Song` 模型新增 `created_at` 字段（MVP 无 alembic，直接删库重建，测试数据本来就该丢）。前端列表点击可跳转回对应歌曲的分析页，状态用中文+颜色区分（排队中/分析中/已完成/失败）；加载失败静默隐藏，不影响核心上传流程。浏览器验证：上传后回首页能看到记录、状态随分析进度更新、点击可跳转
+- [x] 视觉系统统一打磨：建立灰度语义化约定（gray-900 强调/gray-500 次要/gray-400 辅助/gray-100 边框/gray-50 分组背景），红色仅保留给真正的错误态；按钮/输入框统一 hover/focus/disabled 交互反馈
+- [x] **整体信息架构重构为 ChatGPT 风格两栏布局**：新增 `components/layout/AppShell.tsx`（左侧边栏常驻+右侧主内容区）、`components/layout/Sidebar.tsx`（品牌+上传入口+历史列表，`useParams` 高亮当前歌曲），删除旧的 `SiteHeader`/独立 `SongList`。`songs/[id]/layout.tsx` 承载 `SongHeader`（播放器+Key/BPM+时间轴+TAB，从原 `AnalysisView` 拆出并跨路由共享实例），解决了"点击生成编配整页跳转导致播放器/时间轴被卸载"的问题——分析页与编配页现在共享同一个 layout 实例，路由切换只替换下方 `children`。编配页 `ArrangementCard` 改成纯展示+点击选中，新增 `ArrangementChatBar`（`sticky bottom-0` 贴底输入框，对当前选中版本生效，替代原来每张卡片各自的输入框）
+- [x] **和弦时间轴可视化 + 播放高亮**（回补此前标记的简化项）：`components/timeline/ChordTimeline.tsx` 按真实时长比例渲染色块（非等宽），`AudioPlayer` 用 `forwardRef` 暴露 `<audio>` DOM 元素供跨组件读写 `currentTime`；当前播放和弦自动横向滚动居中（`getBoundingClientRect` 计算相对位置，踩坑记录：`offsetLeft` 是相对"最近已定位祖先"而非滚动容器，用它算会把侧边栏宽度也算进去导致滚动错位，需改用 `getBoundingClientRect` 差值）
+- [x] **和弦指法图**（回补此前标记的简化项）：`components/chord/ChordDiagram.tsx` 用 SVG 画标准品格图，兼容后端两种指法字符串格式（`voicings.py` 无分隔符每字符一根弦 vs `power_chord.py` `f"{fret}-{fret+2}-{fret+2}xxx"` 连字符只分隔到倒数第二段、最后一段数字与 x 粘连，需要正则二次拆分）。编配卡片按 `display` 去重展示指法图图例，删除了完整时间顺序的文字标签墙（几十上百个和弦平铺展示导致信息过密，图例已经覆盖了"这个版本用到哪些指法"这个诉求）
+- [x] **新增 TAB 谱可视化**（产品文档原设想之外的补充，六线谱记法而非产品文档 §6.10 的逐音符转录——那个需要新的音频转谱 pipeline，超出当前范围，已明确记录边界）：`components/timeline/TabStrip.tsx`，6 弦横线+品格数字，与 `ChordTimeline` 共享同一套宽度/高亮/居中滚动逻辑并排对照。新增 `hooks/useChordFingerings.ts` 批量查指法（分析页只有裸和弦名，没有编配阶段才有的 fingering 数据）：优先查 `voicings` 库，查不到回退 `power-chord-preview`。踩坑：`api.ts` 最初把这两个端点路径写成 `/chords/...`，实际因为 `arrangements.router` 挂载时统一加了 `/songs` 前缀（`router.py`），正确路径是 `/songs/chords/...`，导致请求全部 404 且被 `catch {}` 静默吞掉、六线谱只有横线没有数字；修复路径后补充 `console.error` 避免同类问题再次难以定位
+- [x] 已知边界（记录在案，非当前范围）：完整逐音符 Solo/Riff TAB 谱转录（产品文档 §6.10）需要全新的音频转谱后端 pipeline + 专业乐谱渲染库（VexFlow/AlphaTab），是独立的大功能规划，不在本次范围
 
 ## 里程碑 7：导出 + 收尾
 - [ ] Markdown 导出

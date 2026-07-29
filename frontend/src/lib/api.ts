@@ -1,5 +1,12 @@
 /** 后端 API client。所有请求统一走这里，方便加错误处理和鉴权。 */
-import type { AgentTrace, Arrangement, Song, SongAnalysisResult } from "@/types";
+import type {
+  AgentTrace,
+  Arrangement,
+  PowerChordPreview,
+  Song,
+  SongAnalysisResult,
+  Voicing,
+} from "@/types";
 
 const BASE = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000/api";
 
@@ -38,6 +45,20 @@ export const api = {
     request<{ arrangement: Arrangement; reply: string; trace: AgentTrace }>(
       `/songs/${songId}/arrangements/${arrangementId}/chat?message=${encodeURIComponent(message)}`,
       { method: "POST" },
+    ),
+
+  // 注意路径前缀：arrangements.py 的 router 挂载时统一加了 /songs 前缀
+  // （router.py: api_router.include_router(arrangements.router, prefix="/songs")），
+  // 即使这两个端点定义在 arrangements.py 里跟具体某首歌无关，实际路径也是
+  // /songs/chords/... 不是 /chords/...。
+  getVoicings: (chordName: string) =>
+    request<{ chord: string; voicings: Voicing[] }>(
+      `/songs/chords/${encodeURIComponent(chordName)}/voicings`,
+    ),
+
+  getPowerChordPreview: (chordName: string) =>
+    request<PowerChordPreview>(
+      `/songs/chords/${encodeURIComponent(chordName)}/power-chord-preview`,
     ),
 
   audioUrl: (id: string) => `${BASE}/songs/${id}/audio`,

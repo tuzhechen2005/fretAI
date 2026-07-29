@@ -1,93 +1,62 @@
 "use client";
 
-import { useState } from "react";
-import { api } from "@/lib/api";
-import type { Arrangement } from "@/types";
+import { useMemo } from "react";
+import type { Arrangement, ArrangedChord } from "@/types";
+import { TYPE_LABEL } from "./arrangementLabels";
+import { ChordDiagram } from "./ChordDiagram";
 
-const TYPE_LABEL: Record<Arrangement["type"], string> = {
-  acoustic_beginner: "木吉他新手版",
-  acoustic_strumming: "木吉他弹唱版",
-  electric_power_chord: "电吉他 Power Chord 版",
-  electric_original: "原曲感电吉他版",
-  high_position_triads: "高把位三和弦版",
-};
-
+/**
+ * 纯展示卡片：点击选中，底部固定的 ArrangementChatBar 会对选中项生效
+ * （自然语言修改的输入/提交逻辑已经搬到那个组件，这里不再各自持有）。
+ */
 export function ArrangementCard({
-  songId,
   arrangement,
-  onUpdated,
+  isSelected,
+  onSelect,
 }: {
-  songId: string;
   arrangement: Arrangement;
-  onUpdated: (updated: Arrangement) => void;
+  isSelected: boolean;
+  onSelect: () => void;
 }) {
-  const [message, setMessage] = useState("");
-  const [reply, setReply] = useState("");
-  const [status, setStatus] = useState<"idle" | "submitting" | "error">("idle");
-
-  async function handleSubmit() {
-    if (!message.trim()) return;
-    setStatus("submitting");
-    setReply("");
-    try {
-      const result = await api.modifyArrangement(songId, arrangement.arrangement_id, message);
-      onUpdated(result.arrangement);
-      setReply(result.reply);
-      setMessage("");
-      setStatus("idle");
-    } catch (err) {
-      setStatus("error");
-      setReply(err instanceof Error ? err.message : "修改失败，请重试");
+  // 同一个编配里同一种和弦（比如 C5）常会反复出现，指法图按 display 去重展示——
+  // 一首歌可能有几十上百个和弦事件，但通常只对应几种到十几种不同和弦形状，
+  // 只展示"这个版本会用到哪些指法"，不逐个按时间顺序重复罗列。
+  const uniqueChords = useMemo(() => {
+    const seen = new Map<string, ArrangedChord>();
+    for (const c of arrangement.chords) {
+      if (c.fingering && !seen.has(c.display)) seen.set(c.display, c);
     }
-  }
+    return [...seen.values()];
+  }, [arrangement.chords]);
 
   return (
-    <div className="flex flex-col gap-4 rounded-lg border border-gray-200 p-5">
+    <button
+      type="button"
+      onClick={onSelect}
+      className={`flex w-full flex-col gap-5 rounded-xl border p-6 text-left transition-colors ${
+        isSelected ? "border-gray-900" : "border-gray-100 hover:border-gray-200"
+      }`}
+    >
       <div className="flex items-baseline justify-between">
-        <h3 className="text-lg font-semibold">{TYPE_LABEL[arrangement.type]}</h3>
-        <span className="text-sm text-gray-500">难度 {arrangement.difficulty}/10</span>
+        <h3 className="text-base font-semibold text-gray-900">{TYPE_LABEL[arrangement.type]}</h3>
+        <div className="flex items-center gap-3 text-xs text-gray-400">
+          {arrangement.capo != null && <span>Capo {arrangement.capo}</span>}
+          <span>难度 {arrangement.difficulty}/10</span>
+        </div>
       </div>
 
-      {arrangement.capo != null && (
-        <p className="text-sm text-gray-500">Capo：第 {arrangement.capo} 品</p>
+      {uniqueChords.length > 0 && (
+        <div className="flex flex-wrap gap-4 rounded-lg bg-gray-50 p-4 text-gray-700">
+          {uniqueChords.map((c) => (
+            <div key={c.display} className="flex flex-col items-center">
+              <ChordDiagram fingering={c.fingering} position={c.position} />
+              <span className="text-xs font-medium text-gray-500">{c.display}</span>
+            </div>
+          ))}
+        </div>
       )}
 
-      <div className="flex flex-wrap gap-2">
-        {arrangement.chords.map((c, i) => (
-          <span
-            key={i}
-            className="rounded-md border border-gray-200 px-3 py-1 text-sm"
-            title={`指法 ${c.fingering || "—"}，第 ${c.position} 品`}
-          >
-            {c.display}
-          </span>
-        ))}
-      </div>
-
-      {arrangement.notes && <p className="text-sm text-gray-600">{arrangement.notes}</p>}
-
-      <div className="mt-2 flex gap-2 border-t border-gray-100 pt-4">
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
-          placeholder="用自然语言修改，比如“降两调”"
-          className="flex-1 rounded-md border border-gray-300 px-3 py-1.5 text-sm"
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={!message.trim() || status === "submitting"}
-          className="rounded-md bg-gray-900 px-4 py-1.5 text-sm font-medium text-white disabled:opacity-40"
-        >
-          {status === "submitting" ? "处理中..." : "修改"}
-        </button>
-      </div>
-      {reply && (
-        <p className={`text-sm ${status === "error" ? "text-red-500" : "text-gray-500"}`}>
-          {reply}
-        </p>
-      )}
-    </div>
+      {arrangement.notes && <p className="text-sm text-gray-500">{arrangement.notes}</p>}
+    </button>
   );
 }

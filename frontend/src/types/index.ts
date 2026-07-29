@@ -51,6 +51,21 @@ export interface Arrangement {
   notes: string;
 }
 
+/** GET /chords/{chord_name}/voicings 里单个指法条目（backend/app/services/tools/voicings.py）。 */
+export interface Voicing {
+  fingering: string;
+  position: number;
+  barre: boolean;
+  kind: "open" | "barre" | "triad" | "power";
+}
+
+/** GET /chords/{chord_name}/power-chord-preview 的返回结构（backend/app/services/tools/power_chord.py）。 */
+export interface PowerChordPreview {
+  display: string;
+  fingering: string;
+  position: number;
+}
+
 export type SongStatus = "pending" | "analyzing" | "done" | "failed";
 
 export interface Song {
