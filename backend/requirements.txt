@@ -13,5 +13,6 @@ soundfile>=0.12
 # LLM Agent（阿里云百炼 OpenAI 兼容接口）
 openai>=1.0
 
-# 导出
-reportlab>=4.2
+# 导出（Markdown 拼装 + HTML 渲染成 PDF；实际选型是 weasyprint 不是最初设想的 reportlab，见 DECISIONS.md）
+markdown>=3.6
+weasyprint>=62.0

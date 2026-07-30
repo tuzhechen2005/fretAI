@@ -148,6 +148,44 @@
 
 ---
 
+## 6. PDF 导出：weasyprint 导入时崩溃，根因是动态库加载时机早于 pydantic-settings 生效
+
+**背景**：里程碑 7 实现 PDF 导出，选型 `markdown` + `weasyprint`（把 Markdown 渲染成 HTML 再转 PDF，见 DECISIONS.md）。系统层面已经用 Homebrew 装了 `pango`（`weasyprint` 的依赖之一）。
+
+**现象**：跑隔离测试脚本（`backend/tests/scratch_export.py`）时，`import weasyprint` 这一步直接抛 `OSError: cannot load library 'libgobject-2.0-0'`，报错信息里明确提示"tried libgobject-2.0-0 ... not in dyld cache"。
+
+**排查过程**：没有直接怀疑"库没装"，先用 `find` 确认库文件本身是否存在——`find /opt/homebrew/Cellar/glib -name "libgobject*"` 找到了 `libgobject-2.0.dylib` 等文件，确认库确实装了（`glib` 包含 `gobject`），问题不在"缺依赖"，而在"能不能找到"。这是 macOS 上常见的动态链接路径问题：`ctypes.util.find_library()` 默认搜索路径不包含 Homebrew 的 `/opt/homebrew/lib`（尤其 Apple Silicon 上 Homebrew 装在 `/opt/homebrew` 而不是老版本 Intel Mac 的 `/usr/local`，很多工具默认搜索路径没跟上这个变化）。
+
+**验证修复方向**：手动在命令行加 `DYLD_LIBRARY_PATH=/opt/homebrew/lib` 前缀重跑脚本，`import weasyprint` 成功，PDF 正常生成（跑出合法的 `%PDF-1.7` 文件头）。确认了根因就是"动态链接器找不到库路径"，不是其他问题。
+
+**这个修复本身还不够，暴露了第二层问题**：这个环境变量不能只在终端手动设置——一旦忘记加前缀启动 `uvicorn`，后端进程会在启动时直接崩溃（导入链是 `main.py` → `api.router` → `export.py` → `services/export/pdf.py` → `weasyprint`，这条链路在应用启动的第一步就会被触发）。而更隐蔽的坑是：`.env` 文件里的配置项，会被 `pydantic-settings` 读进 `Settings` 类的字段，但**不会自动写入 `os.environ`**——`DYLD_LIBRARY_PATH` 不是 `Settings` 类定义过的字段，就算写进 `.env`，`weasyprint` 用的 `ctypes`/`cffi` 库加载机制根本读不到它，因为库加载发生在**模块导入时**，而 `Settings()` 实例化（触发 `.env` 读取）发生在导入之后，时机完全错位。
+
+**修复**：不依赖 `pydantic-settings` 的读取时机，改用 `python-dotenv`（`pydantic-settings` 本身的底层依赖，项目里已经有）在 `main.py` **最顶部**、在 `from app.api.router import api_router` **之前**手动调用 `load_dotenv()`，把 `.env` 里的所有键值对（包括 `DYLD_LIBRARY_PATH`）真正写进 `os.environ`。用 `env -u DYLD_LIBRARY_PATH`（显式清空这个变量的干净子进程环境）重新验证 `import app.main`，确认在完全没有预设这个环境变量的情况下也能正常导入，问题修复。
+
+**为什么这次排查值得记录**：这是"配置系统的读取时机"这类容易被忽视的坑——`.env` 文件不是"魔法般地自动生效"，要看具体是哪个库在读它、什么时候读。`pydantic-settings` 只把 `.env` 映射进自己定义的模型字段，不是无差别地设置进程环境变量；而像 `ctypes`/动态库加载这类"在 import 阶段就要读环境变量"的场景，必须比常规配置加载更早生效，用错了工具（以为 `.env` 写了就万事大吉）会导致"本地手动测试正常、正式启动服务就崩"这种典型的"环境不一致"故障。
+
+**面试话术**：适合讲"为什么同一个 `.env` 文件里的配置，不是所有场景都能直接生效"——展示对 Python 应用启动时序、模块导入机制、以及第三方库依赖系统动态链接库这几层的理解，而不是遇到报错就无脑加个环境变量应付过去。
+
+---
+
+## 7. PDF 导出中文乱码：不是字体问题，是 HTML 缺少 charset 声明
+
+**背景**：紧接上一条（#6）解决动态库加载问题之后，PDF 能正常生成了，但打开一看中文全乱了——标题"木吉他弹唱版"只剩下 "M"、几个孤立英文字母；表格里 `Em` 显示成 `Go`、`C` 显示成 `E`，像是文字被从中间拆开、丢了一部分字符。
+
+**第一个错误假设（排查方向走偏，如实记录）**：第一反应怀疑是中文字体缺失或字体名写法问题——`pdf.py` 里 CSS 用的 `-apple-system` 是 WebKit 私有关键字，`weasyprint` 底层不是浏览器内核，大概率不认识这个值。改成明确写 `"PingFang SC", "Heiti SC"` 后重新生成，**问题依然存在**，说明假设错了。
+
+**排查方式（缩小范围）**：没有直接在真实业务代码里反复试错，而是写了一个最小复现脚本（`backend/tests/scratch_pdf_font_debug.py`），只测"一句中文话在不同字体设置下能不能正常渲染"（PingFang SC / Heiti SC / Songti SC / STHeiti，共 5 组），完全脱离 Markdown 转换和表格结构这些复杂度。用户帮忙打开这 5 个 PDF 确认：**全部正常显示中文**。这个结果直接排除了"字体本身有问题"这个方向——字体和 weasyprint 渲染中文的能力都没问题，问题一定出在真实业务代码"从 Markdown 生成 HTML 字符串"这一层，不是渲染层。
+
+**真正的根因**：`render_pdf` 里拼接最终 HTML 字符串时（`f"<html><head>{PDF_STYLE}</head><body>{body_html}</body></html>"`），既没有 `<!DOCTYPE html>` 也没有 `<meta charset="utf-8">` 声明。`weasyprint` 在没有明确编码声明时会按默认编码规则猜测怎么解析这段字符串，导致 UTF-8 编码的多字节中文字符被从中间错误拆开处理——这正好解释了"一个汉字消失、只剩下后面的英文/数字"这种现象（多字节序列被截断，只有能独立解析成合法字符的部分被保留）。
+
+**修复**：显式加上 `<!DOCTYPE html>` 和 `<meta charset="utf-8">`，问题彻底解决，用户验证截图确认标题、Capo 信息、和弦表格中文全部正常显示。
+
+**为什么这次排查过程值得记录**：这是一次"第一直觉走错方向，靠隔离测试及时纠正"的典型案例——"中文乱码"这个现象表面上最容易联想到"字体缺失"（因为最常见的乱码场景就是缺字体导致方块/问号），但这次的乱码模式其实更接近"编码解析错误"（字符被截断、消失，不是显示成占位符），两种现象长得像但根因完全不同。用最小复现脚本单独验证"字体渲染能力"这一个变量，快速排除了错误假设，避免在真实业务代码里反复试各种字体名瞎猜。这也再次印证 ISSUES.md 里反复出现的方法论——遇到不符合预期的输出，先用最简单的合成/最小化输入做单元级验证，把问题范围锁定到具体是哪一层，而不是在复杂真实场景里直接改代码试错。
+
+**面试话术**：适合讲"排除法排查"和"第一直觉可能是错的"——展示遇到"看起来很像某类经典问题"（乱码=字体问题）的现象时，不满足于最直觉的解释，而是用最小复现测试去验证这个假设本身站不站得住，验证失败后才转向真正的根因（HTML 编码声明缺失）。
+
+---
+
 ## 排查记录写作习惯
 
 以后每次遇到"现象和预期不符、需要排查根因"的情况（不是语法小错误，是系统层面的排查过程），都补一条到这里，格式保持一致：**背景 → 现象 → 排查过程 → 根因/结论 → （可选）已知局限 → 面试话术**。跟 [DECISIONS.md](DECISIONS.md)、[PROGRESS.md](PROGRESS.md) 一起提交进 git，三个文件分工不同：PROGRESS 看"做到哪了"，DECISIONS 看"为什么选这个方案"，这个文件看"怎么查出问题根因的"。
